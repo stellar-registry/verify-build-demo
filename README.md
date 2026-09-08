@@ -27,10 +27,16 @@ deploy, and get verified by Stellar Expert.
 
 ## Publish & deploy (testnet)
 
+The `soroban-build-workflow` release job names its GitHub Release
+`<tag>_<package>_cli<version>`, not the bare tag — check
+[the releases page](https://github.com/stellar-registry/verify-build-demo/releases)
+for the exact name (e.g. `v0.1.0_verify-build-demo_cli25.1.0`).
+
 ```bash
 # download the exact CI-built wasm — publish this one, not a local rebuild,
 # so its hash matches what was already submitted to Stellar Expert
-gh release download v0.1.0 -R stellar-registry/verify-build-demo -p '*.wasm' -D /tmp
+gh release download v0.1.0_verify-build-demo_cli25.1.0 \
+  -R stellar-registry/verify-build-demo -p '*.wasm' -D /tmp
 
 stellar network use testnet
 stellar keys use <your-funded-testnet-identity>
