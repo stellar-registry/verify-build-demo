@@ -25,31 +25,53 @@ deploy, and get verified by Stellar Expert.
    yes, both the contract detail page and (pending `stellar-registry/ui#38`)
    the wasm detail page show a "Verified Build" badge.
 
+## Reproducible builds require a committed `Cargo.lock`
+
+Attestation (GitHub proving *this workflow* produced this wasm) is not the
+same as verification (Stellar Expert independently rebuilding from source and
+byte-comparing the hash). `Cargo.lock` is committed here — deliberately not
+gitignored — so a rebuild resolves the exact same dependency graph as the CI
+build did; without it, verification can silently never succeed even though
+attestation looks fine. (`v0.1.0`'s tag shipped without a locked `Cargo.lock`
+and never verified — confirmed via `stellar contract info build`, which
+showed a valid GitHub attestation, and directly against Stellar Expert's own
+`GET /explorer/testnet/contract/{id}`, which kept returning
+`"validation":{"status":"unverified"}` hours after deploy despite the wasm
+hash matching exactly. `v0.1.1` is the fix.)
+
+Useful inspection commands, run against a downloaded release asset:
+```bash
+stellar contract info meta --wasm <path>    # embedded rsver/rssdkver/cliver/source_repo
+stellar contract info build --wasm <path>   # looks up the GitHub attestation for the hash
+stellar contract info hash --wasm <path>    # the wasm's own hash, to cross-check against
+                                             # GET https://api.stellar.expert/explorer/testnet/contract/{id}
+```
+
 ## Publish & deploy (testnet)
 
 The `soroban-build-workflow` release job names its GitHub Release
 `<tag>_<package>_cli<version>`, not the bare tag — check
 [the releases page](https://github.com/stellar-registry/verify-build-demo/releases)
-for the exact name (e.g. `v0.1.0_verify-build-demo_cli25.1.0`).
+for the exact name (e.g. `v0.1.1_verify-build-demo_cli25.1.0`).
 
 ```bash
 # download the exact CI-built wasm — publish this one, not a local rebuild,
 # so its hash matches what was already submitted to Stellar Expert
-gh release download v0.1.0_verify-build-demo_cli25.1.0 \
+gh release download v0.1.1_verify-build-demo_cli25.1.0 \
   -R stellar-registry/verify-build-demo -p '*.wasm' -D /tmp
 
 stellar network use testnet
 stellar keys use <your-funded-testnet-identity>
 
 stellar registry publish \
-  --wasm /tmp/verify_build_demo_v0.1.0.wasm \
+  --wasm /tmp/verify-build-demo_v0.1.1.wasm \
   --wasm-name unverified/verify-build-demo \
-  --binver 0.1.0
+  --binver 0.1.1
 
 stellar registry deploy \
   --contract-name unverified/verify-build-demo \
   --wasm-name unverified/verify-build-demo \
-  --version 0.1.0
+  --version 0.1.1
 ```
 
 Verification isn't instant — Stellar Expert has to index the on-chain deploy
